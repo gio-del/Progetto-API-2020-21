@@ -4,44 +4,40 @@
 #include <limits.h>
 
 typedef struct {
-    unsigned int cost; // e' il peso del grafo
-    unsigned int id; //id grafo, numero progressivo da 0 a k_nodes-1
+    unsigned int cost;
+    unsigned int id;
 }graph;
 
 typedef enum{false=0,true=1
 }bool;
 
-typedef struct { //struct per nodi dijkstra
-    unsigned int dist; //la distanza dal nodo sorgente
+typedef struct {
+    unsigned int dist;
     bool visited;
 }dijkstra_node;
 
-//Variabili globali
-unsigned int n_nodes; //numero di nodi
-unsigned int k_top; //k=numero di grafi "migliori" da stampare
-unsigned int ** adj_mat; // e' la matrice di buffer usata per fare i conti sui cammini minimi dei grafi
-unsigned int n_graph=0; //numero grafi inseriti fino a quel momento
-graph * heap; //è lo heap che conterrà la classifica dei topK
-//FILE * fin;
+unsigned int n_nodes;
+unsigned int k_top;
+unsigned int ** adj_mat;
+unsigned int n_graph=0;
+graph * heap;
 
-//Prototipi funzioni
 void input_parse();
-void crea_matrice();
-void aggiungi_grafo();
-void topk();
+void create_matrix();
+void add_graph();
+void topK();
 dijkstra_node * dijkstra_nodes_alloc(unsigned int len);
 unsigned int sum_dijkstra();
-unsigned int node_mindist(dijkstra_node * vect); //ritorna quale nodo ha distanza minima nel vettore dei nodi
+unsigned int node_min_dist(dijkstra_node * vector);
 void heap_allocate();
 void max_heapify(unsigned int n);
 void swap(graph * n1, graph * n2);
-void costruisci_max_heap();
-void inserimento_contestuale(graph node); //inserisce l'elemento sostituendo quello con costo maggiore
-unsigned int atoi_veloce( char * str );
+void create_max_heap();
+void insert_on_top(graph node);
+unsigned int fast_atoi(char * str );
 
 
 int main(){
-//    fin=fopen("input.txt","r");
     input_parse();
     return 0;
 }
@@ -49,28 +45,28 @@ int main(){
 void input_parse(){
     char buffer[20];
     char * token = NULL;
-    //prende i primi due numeri: numero di nodi e k
+
     if(fgets(buffer,sizeof(buffer),stdin)) {
         token = strtok(buffer, " ");
     }
-    n_nodes=atoi_veloce(token);
+    n_nodes=fast_atoi(token);
     token=strtok(NULL," ");
-    k_top=atoi_veloce(token);
-    crea_matrice(); //crea la matrice di adiacenza di supporto su cui verrà eseguito dijkstra
+    k_top=fast_atoi(token);
+    create_matrix();
     heap_allocate();
-    //parsing del resto dell'input
+
     while(fgets(buffer,sizeof(buffer),stdin)!=NULL){
         if(buffer[0]=='A'){
-            aggiungi_grafo();
+            add_graph();
             n_graph++;
         }
         else if(buffer[0]=='T'){
-            topk();
+            topK();
         }
     }
 }
 
-void crea_matrice(){
+void create_matrix(){
     unsigned int i;
     adj_mat=(unsigned int **)malloc(sizeof(unsigned int *)*n_nodes);
     for(i=0;i<n_nodes;i++){
@@ -82,57 +78,56 @@ void heap_allocate(){
     heap=(graph *)malloc(sizeof(graph)*k_top);
 }
 
-unsigned int atoi_veloce( char * str )
+unsigned int fast_atoi(char * str )
 {
     unsigned int n = 0;
     while( *str!='\0' && *str!='\n' && *str!='\r') {
-        n = n*10 + *str - '0'; // *str-'0' converte il numero *str da char a unsigned int
+        n = n*10 + *str - '0';
         str++;
     }
     return n;
 }
 
-void aggiungi_grafo(){
+void add_graph(){
     unsigned int i=0,j;
     int idx_line,idx_buff;
-    char linebuffer[4196];
+    char line_buffer[4196];
     char buffer_int[15];
-    graph grafo_da_inserire;
+    graph graph_to_add;
     while(i<n_nodes){
         j=0;
         idx_line=0;
         idx_buff=0;
-        if(fgets(linebuffer,sizeof(linebuffer),stdin)){
-            while(linebuffer[idx_line]!='\n'){
-                if(linebuffer[idx_line]==','){
+        if(fgets(line_buffer,sizeof(line_buffer),stdin)){
+            while(line_buffer[idx_line]!='\n'){
+                if(line_buffer[idx_line]==','){
                     buffer_int[idx_buff]='\0';
-                    adj_mat[i][j]=atoi_veloce(buffer_int);
+                    adj_mat[i][j]=fast_atoi(buffer_int);
                     j++;
                     idx_buff=0;
                     idx_line++;
                 }
                 else{
-                    buffer_int[idx_buff]=linebuffer[idx_line];
+                    buffer_int[idx_buff]=line_buffer[idx_line];
                     idx_buff++;
                     idx_line++;
                 }
             }
             buffer_int[idx_buff]='\0';
-            adj_mat[i][j]=atoi_veloce(buffer_int);
+            adj_mat[i][j]=fast_atoi(buffer_int);
             i++;
         }
     }
-    grafo_da_inserire.cost = sum_dijkstra();
-    grafo_da_inserire.id = n_graph;
-    //printf("Il grafo numero %d ha peso %d\n",n_graph,grafo_da_inserire.cost);
+    graph_to_add.cost = sum_dijkstra();
+    graph_to_add.id = n_graph;
     if(n_graph<k_top){
-        heap[n_graph] = grafo_da_inserire;
+        heap[n_graph] = graph_to_add;
         if (n_graph == k_top - 1) {
-            costruisci_max_heap();
+            create_max_heap();
         }
     }
     else{
-        inserimento_contestuale(grafo_da_inserire);
+        insert_on_top(graph_to_add);
     }
 }
 
@@ -142,28 +137,28 @@ dijkstra_node * dijkstra_nodes_alloc(unsigned int len){
     return temp;
 }
 
-unsigned int node_mindist(dijkstra_node * vect){
-    unsigned int min=UINT_MAX , minidx=0, index;
+unsigned int node_min_dist(dijkstra_node * vector){
+    unsigned int min=UINT_MAX , min_idx=0, index;
     for(index=0;index<n_nodes;index++){
-        if(vect[index].visited==false && vect[index].dist<=min){
-            min=vect[index].dist;
-            minidx=index;
+        if(vector[index].visited==false && vector[index].dist<=min){
+            min=vector[index].dist;
+            min_idx=index;
         }
     }
-    return minidx;
+    return min_idx;
 }
 
 unsigned int sum_dijkstra(){
     unsigned int idx,idx_minimum_distance, count=n_nodes,sum=0;
     dijkstra_node * nodes = dijkstra_nodes_alloc(n_nodes);
-    nodes[0].dist=0; //la sorgente è 0 e la sua distanza dal nodo 0 è 0
+    nodes[0].dist=0;
     nodes[0].visited=false;
     for(idx=1;idx<n_nodes;idx++){
         nodes[idx].dist=UINT_MAX;
         nodes[idx].visited=false;
     }
     while(count>0){
-        idx_minimum_distance = node_mindist(nodes);
+        idx_minimum_distance = node_min_dist(nodes);
         nodes[idx_minimum_distance].visited = true;
         if(nodes[idx_minimum_distance].dist<UINT_MAX) {
             for (idx = 0; idx < n_nodes; idx++) {
@@ -185,7 +180,7 @@ unsigned int sum_dijkstra(){
     return sum;
 }
 
-void inserimento_contestuale(graph node){
+void insert_on_top(graph node){
     if(heap[0].cost>node.cost || (heap[0].cost==node.cost && heap[0].id>node.id)){
         heap[0]=node;
         max_heapify(0);
@@ -198,7 +193,7 @@ void swap(graph * n1, graph * n2){
     *n2=temp;
 }
 
-void costruisci_max_heap(){
+void create_max_heap(){
     unsigned int i=k_top/2;
     for(;i>0;i--){
         max_heapify(i);
@@ -209,23 +204,23 @@ void costruisci_max_heap(){
 }
 
 void max_heapify(unsigned int n){
-    unsigned int l=2*n+1, r=2*n+2, posmax;
+    unsigned int l=2*n+1, r=2*n+2, pos_max;
     if((l<k_top && heap[l].cost>heap[n].cost) || (l<k_top && heap[l].cost==heap[n].cost && heap[l].id>heap[n].id )){
-        posmax=l;
+        pos_max=l;
     }
     else{
-        posmax=n;
+        pos_max=n;
     }
-    if((r<k_top && heap[r].cost>heap[posmax].cost) || (r<k_top && heap[r].cost==heap[posmax].cost && heap[r].id>heap[posmax].id )){
-        posmax=r;
+    if((r<k_top && heap[r].cost>heap[pos_max].cost) || (r<k_top && heap[r].cost==heap[pos_max].cost && heap[r].id>heap[pos_max].id )){
+        pos_max=r;
     }
-    if(posmax!=n){
-        swap(&heap[n],&heap[posmax]);
-        max_heapify(posmax);
+    if(pos_max!=n){
+        swap(&heap[n],&heap[pos_max]);
+        max_heapify(pos_max);
     }
 }
 
-void topk(){
+void topK(){
     unsigned int i;
     if(n_graph==0){
         printf("\n");
